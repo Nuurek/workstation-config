@@ -1,0 +1,6 @@
+{
+    "ansible.python.activationScript": ".venv/bin/activate",
+    "files.exclude": {
+        ".venv": true
+    }
+}
