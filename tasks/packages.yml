@@ -1,5 +1,5 @@
 - name: Install APT packages
-  apt: name={{ item }}
-  with_items:
-    - curl
-    - cmake
+  apt:
+    pkg:
+      - curl
+      - cmake
