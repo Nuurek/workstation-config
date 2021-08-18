@@ -1,7 +1,10 @@
-- name: Hello world
-  hosts: localhost
+- hosts: localhost
+  become: true
+  
+  pre_tasks:
+    - name: Update APT
+      apt: update_cache=yes
+      changed_when: False
 
   tasks:
-    - name: Print hello world
-      debug:
-        msg: Hello, world!
+    - include: tasks/packages.yml

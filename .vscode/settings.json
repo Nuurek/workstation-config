@@ -2,5 +2,9 @@
     "ansible.python.activationScript": ".venv/bin/activate",
     "files.exclude": {
         ".venv": true
-    }
+    },
+    "[yaml]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
 }
