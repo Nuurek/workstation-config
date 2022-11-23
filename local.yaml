@@ -1,0 +1,20 @@
+- hosts: localhost
+  vars:
+    username: nuurek
+    home: /home/{{ username}}
+  tasks:
+  - name: Install git
+    apt: name=git
+
+  - name: Configure git
+    ansible.builtin.copy:
+      src: configs/git/.gitconfig
+      dest: "{{ home }}/.gitconfig"
+
+  - name: Install yakuake
+    apt: name=yakuake
+
+  - name: Configure yakuake
+    ansible.builtin.copy:
+      src: configs/yakuake/yakuakerc
+      dest: /home/{{ username }}/.config/yakuakerc
