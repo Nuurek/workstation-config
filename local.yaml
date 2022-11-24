@@ -3,6 +3,12 @@
     username: nuurek
     home: /home/{{ username}}
   tasks:
+  - name: Install required dependencies
+    apt:
+      pkg:
+      - dbus-x11
+      - libfuse2
+  
   - name: Install git
     apt: name=git
 
@@ -10,11 +16,41 @@
     ansible.builtin.copy:
       src: configs/git/.gitconfig
       dest: "{{ home }}/.gitconfig"
+      owner: "{{ username }}"
+      group: "{{ username }}"
 
-  - name: Install yakuake
-    apt: name=yakuake
+  - name: Install Guake
+    apt: name=guake
 
-  - name: Configure yakuake
-    ansible.builtin.copy:
-      src: configs/yakuake/yakuakerc
-      dest: /home/{{ username }}/.config/yakuakerc
+  - name: Configure Guake
+    ansible.builtin.shell: cat configs/guake/guake.dconf | dconf load /apps/guake/
+
+  - name: Install Visual Studio Code
+    community.general.snap:
+        name: code
+        classic: true
+
+  - name: Install Google Chrome
+    apt:
+      deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+  - name: Set Google Chrome as default web browser
+    ansible.builtin.shell: xdg-settings set default-web-browser google-chrome.desktop
+
+  - name: Download JetBrains Toolbox
+    ansible.builtin.unarchive:
+      src: https://download.jetbrains.com/toolbox/jetbrains-toolbox-1.27.0.13477.tar.gz
+      dest: /opt/
+      creates: /opt/jetbrains/
+      remote_src: yes
+      extra_opts:
+      - --transform
+      - s/.*/jetbrains\/jetbrains-toolbox/
+
+  - name: Allow running JetBrains Toolbox
+    ansible.builtin.file:
+      path: /opt/jetbrains/jetbrains-toolbox
+      mode: 0755
+
+  - name: Start JetBrains Toolbox
+    ansible.builtin.command: /opt/jetbrains/jetbrains-toolbox
