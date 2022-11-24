@@ -30,7 +30,7 @@ close-tab='<Primary>w'
 new-tab='<Primary>t'
 
 [style/background]
-transparency=90
+transparency=100
 
 [style/font]
 allow-bold=true

@@ -8,49 +8,87 @@
       pkg:
       - dbus-x11
       - libfuse2
+      - python3-psutil
   
   - name: Install git
     apt: name=git
 
   - name: Configure git
-    ansible.builtin.copy:
+    copy:
       src: configs/git/.gitconfig
-      dest: "{{ home }}/.gitconfig"
-      owner: "{{ username }}"
-      group: "{{ username }}"
+      dest: "~/.gitconfig"
+    become: true
+    become_user: "{{ username }}"
 
   - name: Install Guake
     apt: name=guake
 
+  - name: Check if Guake config is updated
+    shell: if [[ "`dconf dump /apps/guake/`" == "`cat configs/guake/guake.dconf`" ]]; then echo "true"; else echo "false"; fi
+    args:
+      executable: /bin/bash
+    register: guake_config
+    changed_when: guake_config.stdout == 'false'
+
   - name: Configure Guake
-    ansible.builtin.shell: cat configs/guake/guake.dconf | dconf load /apps/guake/
+    when: guake_config.changed
+    shell: cat configs/guake/guake.dconf | dconf load /apps/guake/
 
   - name: Install Visual Studio Code
     community.general.snap:
-        name: code
-        classic: true
+      name: code
+      classic: true
+
+  - name: Check if Google Chrome is installed
+    command: which google-chrome
+    register: google_chrome
+    changed_when: google_chrome.rc != 0
 
   - name: Install Google Chrome
+    when: google_chrome.changed
     apt:
       deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
   - name: Set Google Chrome as default web browser
-    ansible.builtin.shell: xdg-settings set default-web-browser google-chrome.desktop
+    when: google_chrome.changed
+    command: xdg-settings set default-web-browser google-chrome.desktop
 
   - name: Download JetBrains Toolbox
-    ansible.builtin.unarchive:
+    unarchive:
       src: https://download.jetbrains.com/toolbox/jetbrains-toolbox-1.27.0.13477.tar.gz
+      remote_src: yes
       dest: /opt/
       creates: /opt/jetbrains/
-      remote_src: yes
       extra_opts:
       - --transform
       - s/.*/jetbrains\/jetbrains-toolbox/
+      register: was_jetbrains_toolbox_downloaded
 
   - name: Allow running JetBrains Toolbox
-    ansible.builtin.file:
+    when: was_jetbrains_toolbox_downloaded is defined
+    file:
       path: /opt/jetbrains/jetbrains-toolbox
       mode: 0755
 
-  - name: Start JetBrains Toolbox
-    ansible.builtin.command: /opt/jetbrains/jetbrains-toolbox
+  - name: Initialize JetBrains Toolbox
+    when: was_jetbrains_toolbox_downloaded is defined
+    command: /opt/jetbrains/jetbrains-toolbox
+
+  - name: Install Rambox
+    community.general.snap:
+      name: rambox
+
+  - name: Set favorite apps
+    community.general.dconf:
+      key: '/org/gnome/shell/favorite-apps'
+      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'code_code.desktop']"
+    become: true
+    become_user: "{{ username }}"
+
+  - name: Set MIME Applications
+    copy:
+      src: configs/gnome/mimeapps.list
+      dest: "~/.config/mimeapps.list"
+    become: true
+    become_user: "{{ username }}"
+
