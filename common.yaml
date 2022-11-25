@@ -1,7 +1,7 @@
 - hosts: localhost
   vars:
     username: nuurek
-    home: /home/{{ username}}
+    home: /home/{{ username }}
   tasks:
   - name: Install required dependencies
     apt:
@@ -9,6 +9,7 @@
       - dbus-x11
       - libfuse2
       - python3-psutil
+      - curl
   
   - name: Install git
     apt: name=git
@@ -78,10 +79,14 @@
     community.general.snap:
       name: rambox
 
+  - name: Install Spotify
+    community.general.snap:
+      name: spotify
+
   - name: Set favorite apps
     community.general.dconf:
       key: '/org/gnome/shell/favorite-apps'
-      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'code_code.desktop']"
+      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'code_code.desktop', 'spotify_spotify.desktop']"
     become: true
     become_user: "{{ username }}"
 
@@ -91,4 +96,3 @@
       dest: "~/.config/mimeapps.list"
     become: true
     become_user: "{{ username }}"
-

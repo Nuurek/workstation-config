@@ -1,0 +1,9 @@
+- name: Include common tasks
+  ansible.builtin.import_playbook: common.yaml
+
+- hosts: localhost
+  tasks:
+  - name: Install NVIDIA driver
+    apt:
+      pkg:
+      - nvidia-driver-515
