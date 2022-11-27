@@ -54,30 +54,17 @@
     when: google_chrome.changed
     command: xdg-settings set default-web-browser google-chrome.desktop
 
-  - name: Download JetBrains Toolbox
-    unarchive:
-      src: https://download.jetbrains.com/toolbox/jetbrains-toolbox-1.27.0.13477.tar.gz
-      remote_src: yes
-      dest: /opt/
-      creates: /opt/jetbrains/
-      extra_opts:
-      - --transform
-      - s/.*/jetbrains\/jetbrains-toolbox/
-      register: was_jetbrains_toolbox_downloaded
-
-  - name: Allow running JetBrains Toolbox
-    when: was_jetbrains_toolbox_downloaded is defined
-    file:
-      path: /opt/jetbrains/jetbrains-toolbox
-      mode: 0755
-
-  - name: Initialize JetBrains Toolbox
-    when: was_jetbrains_toolbox_downloaded is defined
-    command: /opt/jetbrains/jetbrains-toolbox
-
-  - name: Install Rambox
+  - name: Install PyCharm Professional Edition
     community.general.snap:
-      name: rambox
+      name: pycharm-professional
+      classic: true
+
+  - name: Synchronize JetBrains configs
+    synchronize:
+      src: secrets/JetBrains/
+      dest: "{{ home }}/.config/JetBrains/"
+    become: true
+    become_user: "{{ username }}"
 
   - name: Install Spotify
     community.general.snap:
