@@ -16,7 +16,7 @@
 
   - name: Configure git
     copy:
-      src: configs/git/.gitconfig
+      src: configs/common/git/.gitconfig
       dest: "~/.gitconfig"
     become: true
     become_user: "{{ username }}"
@@ -25,7 +25,7 @@
     apt: name=guake
 
   - name: Check if Guake config is updated
-    shell: if [[ "`dconf dump /apps/guake/`" == "`cat configs/guake/guake.dconf`" ]]; then echo "true"; else echo "false"; fi
+    shell: if [[ "`dconf dump /apps/guake/`" == "`cat configs/common/guake/guake.dconf`" ]]; then echo "true"; else echo "false"; fi
     args:
       executable: /bin/bash
     register: guake_config
@@ -33,7 +33,7 @@
 
   - name: Configure Guake
     when: guake_config.changed
-    shell: cat configs/guake/guake.dconf | dconf load /apps/guake/
+    shell: cat configs/common/guake/guake.dconf | dconf load /apps/guake/
 
   - name: Install Visual Studio Code
     community.general.snap:
@@ -92,7 +92,7 @@
 
   - name: Set MIME Applications
     copy:
-      src: configs/gnome/mimeapps.list
+      src: configs/common/gnome/mimeapps.list
       dest: "~/.config/mimeapps.list"
     become: true
     become_user: "{{ username }}"
