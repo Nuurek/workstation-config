@@ -2,6 +2,7 @@
   vars:
     username: nuurek
     home: /home/{{ username }}
+    organizations: "{{lookup('file', 'secrets/organizations.yaml') | from_yaml}}"
   tasks:
   - name: Install required dependencies
     apt:
@@ -10,6 +11,13 @@
       - libfuse2
       - python3-psutil
       - curl
+
+  - name: Configure SSH
+    synchronize:
+      src: secrets/.ssh/
+      dest: "{{ home }}/.ssh/"
+    become: true
+    become_user: "{{ username }}"
   
   - name: Install git
     apt: name=git
@@ -54,6 +62,19 @@
     when: google_chrome.changed
     command: xdg-settings set default-web-browser google-chrome.desktop
 
+  - name: Enable deadsnakes APT repository 
+    apt_repository: 
+      repo: "ppa:deadsnakes/ppa"
+
+  - name: Install Python related packages
+    apt:
+      pkg:
+      - python3-pip
+      - python3.9
+      - python3.9-venv
+      - python3.10-dev
+      - python3.10-venv
+
   - name: Install PyCharm Professional Edition
     community.general.snap:
       name: pycharm-professional
@@ -65,6 +86,46 @@
       dest: "{{ home }}/.config/JetBrains/"
     become: true
     become_user: "{{ username }}"
+
+  - name: Create organizations' directories
+    file:
+      path: "~/{{ item.name }}/Repositories"
+      state: directory
+    become: true
+    become_user: "{{ username }}"
+    loop: "{{ organizations }}"
+
+  - name: Configure organizations' git
+    copy:
+      src: "secrets/{{ item.name }}/.gitconfig"
+      dest: "~/{{ item.name }}/.gitconfig"
+    become: true
+    become_user: "{{ username }}"
+    loop: "{{ organizations }}"
+
+  - name: Checkout organizations' repositories
+    git:
+      repo: "git@{{ item.0.base_repositories_path }}/{{ item.1 }}.git"
+      dest: "~/{{ item.0.name }}/Repositories/{{ item.1 }}"
+      accept_newhostkey: true
+    become: true
+    become_user: "{{ username }}"
+    loop: "{{ organizations | subelements('repositories') }}"
+
+  - name: Check if configurations for organizations' repositories exist
+    stat:
+      path: "secrets/{{ item.0.name }}/{{ item.1 }}/"
+    loop: "{{ organizations | subelements('repositories') }}"
+    register: organizations_repositories_configurations
+
+  - name: Copy configurations to organizations' repositories
+    synchronize:
+      src: "secrets/{{ item.item.0.name }}/{{ item.item.1 }}/"
+      dest: "{{ home }}/{{ item.item.0.name }}/Repositories/{{ item.item.1 }}/"
+    become: true
+    become_user: "{{ username }}"
+    loop: "{{ organizations_repositories_configurations.results }}"
+    when: "{{ item.stat.exists }}"
 
   - name: Install Spotify
     community.general.snap:

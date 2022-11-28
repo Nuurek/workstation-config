@@ -4,7 +4,11 @@ This repository contains Ansible playbook for configuring local development mach
 
 ## Setup
 
-Install Ansible with `sudo apt-get install ansible`
+Install Ansible:
+```
+sudo apt-add-repository ppa:ansible/ansible
+sudo apt install ansible=2.13.6
+```
 
 ## Machines
 
@@ -16,9 +20,18 @@ The repository contains common tasks for all machines as well as playbooks for s
 
 Put all the required secrets under `secrets/` directory in this repository. The structure of that directory must be like that:
 
-* JetBrains/
-    * Pycharm20xx.y/
-    * CLion20xx.y/
+* `.ssh`
+* `Organization1/`
+    * `.gitconfig`
+    * `organization1-repository1/.idea`
+    * `organization1-repository2/.vscode`
+* `Organization2/`
+    * `.gitconfig`
+    * `organization2-repository1/.idea`
+    * `organization2-repository2/.vscode`
+* `JetBrains/`
+    * `Pycharm20xx.y/`
+    * `CLion20xx.y/`
     * etc.
 
 ## Running the playbook

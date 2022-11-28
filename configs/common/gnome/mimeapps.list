@@ -6,6 +6,7 @@ x-scheme-handler/about=google-chrome.desktop
 x-scheme-handler/unknown=google-chrome.desktop
 application/xhtml+xml=google-chrome.desktop
 x-scheme-handler/jetbrains=jetbrains-toolbox.desktop
+text/plain=code_code.desktop
 
 [Added Associations]
 x-scheme-handler/http=google-chrome.desktop;
@@ -13,3 +14,4 @@ text/html=google-chrome.desktop;
 application/xhtml+xml=google-chrome.desktop;
 x-scheme-handler/https=google-chrome.desktop;
 video/mp4=google-chrome.desktop;
+text/plain=code_code.desktop;
