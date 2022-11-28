@@ -103,6 +103,16 @@
     become_user: "{{ username }}"
     loop: "{{ organizations }}"
 
+  - name: Set organizations' git configs in user .gitconfig
+    blockinfile:
+      path: "~/.gitconfig"
+      block: |
+        [includeIf "gitdir:~/{{ item.name }}/"]
+          path = ~/{{ item.name }}/.gitconfig
+    become: true
+    become_user: "{{ username }}"
+    loop: "{{ organizations }}"
+
   - name: Checkout organizations' repositories
     git:
       repo: "git@{{ item.0.base_repositories_path }}/{{ item.1 }}.git"
