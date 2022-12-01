@@ -87,6 +87,13 @@
     become: true
     become_user: "{{ username }}"
 
+  - name: Install nvm
+    shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
+    args:
+      creates: "{{ home }}/.nvm/nvm.sh"
+    become: true
+    become_user: "{{ username }}"
+
   - name: Create organizations' directories
     file:
       path: "~/{{ item.name }}/Repositories"
@@ -140,6 +147,9 @@
   - name: Install Spotify
     community.general.snap:
       name: spotify
+
+  - name: Install simple-scan
+    apt: name=simple-scan
 
   - name: Set favorite apps
     community.general.dconf:
