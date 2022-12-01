@@ -55,6 +55,7 @@
   - name: Check if Google Chrome is installed
     command: which google-chrome
     register: google_chrome
+    failed_when: google_chrome.rc > 1
     changed_when: google_chrome.rc != 0
 
   - name: Install Google Chrome
@@ -78,6 +79,24 @@
       - python3.9-venv
       - python3.10-dev
       - python3.10-venv
+
+  - name: Check if Poetry is installed
+    stat:
+      path: "{{ home }}/.local/share/pypoetry/venv/bin/poetry"
+    register: poetry_bin
+
+  - name: Install Poetry
+    when: not poetry_bin.stat.exists
+    shell: curl -sSL https://install.python-poetry.org | python3 -
+    become: true
+    become_user: "{{ username }}"
+
+  - name: Append .local/bin to $PATH in .bashrc
+    lineinfile:
+      path: "{{ home }}/.bashrc"
+      line: export PATH="$HOME/.local/bin:$PATH"
+    become: true
+    become_user: "{{ username }}"
 
   - name: Install PyCharm Professional Edition
     community.general.snap:
