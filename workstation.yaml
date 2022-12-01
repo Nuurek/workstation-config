@@ -14,6 +14,7 @@
   - name: Find Spotify config file
     command: "find {{ home }}/snap/ -wholename '*.config/spotify/Users/*/prefs'"
     register: spotify_config
+    changed_when: false
 
   - name: Set Spotify zoom level
     when: spotify_config.stdout
