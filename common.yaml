@@ -4,6 +4,16 @@
     home: /home/{{ username }}
     organizations: "{{lookup('file', 'secrets/organizations.yaml') | from_yaml}}"
   tasks:
+  - name: Check if Universe APT repository is enabled
+    command: grep -i "^[^#].*universe.*" /etc/apt/sources.list
+    register: is_universe_enabled
+    failed_when: is_universe_enabled.rc > 1
+    changed_when: false
+
+  - name: Enable Universe APT repository
+    when: is_universe_enabled.rc == 1
+    command: sudo add-apt-repository universe
+
   - name: Install required dependencies
     apt:
       pkg:
@@ -67,6 +77,14 @@
     when: google_chrome.changed
     command: xdg-settings set default-web-browser google-chrome.desktop
 
+  - name: Install development packages
+    apt:
+      pkg:
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - gdal-bin
+      - gettext
+
   - name: Enable deadsnakes APT repository 
     apt_repository: 
       repo: "ppa:deadsnakes/ppa"
@@ -76,6 +94,7 @@
       pkg:
       - python3-pip
       - python3.9
+      - python3.9-dev
       - python3.9-venv
       - python3.10-dev
       - python3.10-venv
@@ -143,6 +162,17 @@
       - containerd.io
       - docker-compose-plugin
 
+  - name: Create docker group
+    group:
+      name: docker
+      state: present
+
+  - name: Add user to docker group
+    user:
+      name: "{{ username }}"
+      groups: docker
+      append: true
+
   - name: Create organizations' directories
     file:
       path: "~/{{ item.name }}/Repositories"
@@ -204,7 +234,7 @@
   - name: Set favorite apps
     community.general.dconf:
       key: '/org/gnome/shell/favorite-apps'
-      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'code_code.desktop', 'spotify_spotify.desktop']"
+      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'pycharm-professional_pycharm-professional.desktop', 'code_code.desktop', 'spotify_spotify.desktop']"
     become: true
     become_user: "{{ username }}"
 
