@@ -31,6 +31,22 @@
       dest: "{{ home }}/.ssh/"
     become: true
     become_user: "{{ username }}"
+
+  - name: Find SSH keys
+    find:
+      paths: "{{ home }}/.ssh/"
+      file_type: file
+    register: ssh_key_files
+
+  - name: Debug
+    debug:
+      var: ssh_key_files
+
+  - name: Change permissions of SSH files
+    file:
+      path: "{{ item.path }}"
+      mode: "0400"
+    loop: "{{ ssh_key_files.files }}"
   
   - name: Install git
     apt: name=git
@@ -88,6 +104,11 @@
   - name: Enable deadsnakes APT repository 
     apt_repository: 
       repo: "ppa:deadsnakes/ppa"
+
+  - name: Copy deadsnakes APT repository GPG key to trusted directory
+    shell: sudo apt-key export 6A755776 | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/deadsnakes.gpg
+    args:
+      creates: /etc/apt/trusted.gpg.d/deadsnakes.gpg
 
   - name: Install Python related packages
     apt:
@@ -172,6 +193,17 @@
       name: "{{ username }}"
       groups: docker
       append: true
+
+  - name: Install AWS CLI
+    apt:
+      pkg: awscli
+
+  - name: Configure AWS CLI
+    synchronize:
+      src: secrets/.aws/
+      dest: "{{ home }}/.aws/"
+    become: true
+    become_user: "{{ username }}"
 
   - name: Create organizations' directories
     file:

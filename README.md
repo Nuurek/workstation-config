@@ -7,7 +7,7 @@ This repository contains Ansible playbook for configuring local development mach
 Install Ansible:
 ```
 sudo apt-add-repository ppa:ansible/ansible
-sudo apt install ansible=2.13.6
+sudo apt install ansible
 ```
 
 ## Machines
@@ -21,6 +21,7 @@ The repository contains common tasks for all machines as well as playbooks for s
 Put all the required secrets under `secrets/` directory in this repository. The structure of that directory must be like that:
 
 * `.ssh`
+* `.aws`
 * `Organization1/`
     * `.gitconfig`
     * `organization1-repository1/.idea`
