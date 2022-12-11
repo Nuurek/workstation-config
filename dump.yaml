@@ -1,0 +1,43 @@
+- hosts: localhost
+  vars:
+    username: nuurek
+    home: /home/{{ username }}
+    organizations: "{{lookup('file', 'secrets/organizations.yaml') | from_yaml}}"
+  tasks:
+  - name: Copy mimeapps.list
+    synchronize:
+      src: "{{ home }}/.config/mimeapps.list"
+      dest: configs/common/gnome/mimeapps.list
+    become: true
+    become_user: "{{ username }}"
+
+  - name: Dump guake.dconf to variable
+    command: dconf dump /apps/guake/
+    become: true
+    become_user: "{{ username }}"
+    register: guake_dconf
+    changed_when: false
+
+  - name: Dump guake.dconf to file
+    copy:
+      content: "{{ guake_dconf.stdout }}"
+      dest: configs/common/guake/guake.dconf
+
+  - name: Copy AWS CLI config
+    synchronize:
+      src: "{{ home }}/.aws/"
+      dest: secrets/.aws/
+    become: true
+    become_user: "{{ username }}"
+
+  - name: Copy SSH config
+    synchronize:
+      src: "{{ home }}/.ssh/"
+      dest: secrets/.ssh/
+
+  - name: Copy JetBrains config
+    synchronize:
+      src: "{{ home }}/.config/JetBrains/"
+      dest: secrets/JetBrains/
+    become: true
+    become_user: "{{ username }}"

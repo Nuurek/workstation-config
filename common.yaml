@@ -29,6 +29,10 @@
     synchronize:
       src: secrets/.ssh/
       dest: "{{ home }}/.ssh/"
+      recursive: yes
+      archive: no
+      checksum: yes
+      delete: yes
     become: true
     become_user: "{{ username }}"
 
@@ -38,11 +42,7 @@
       file_type: file
     register: ssh_key_files
 
-  - name: Debug
-    debug:
-      var: ssh_key_files
-
-  - name: Change permissions of SSH files
+  - name: Change permissions of SSH keys
     file:
       path: "{{ item.path }}"
       mode: "0400"
@@ -68,10 +68,14 @@
       executable: /bin/bash
     register: guake_config
     changed_when: guake_config.stdout == 'false'
+    become: true
+    become_user: "{{ username }}"
 
   - name: Configure Guake
     when: guake_config.changed
     shell: cat configs/common/guake/guake.dconf | dconf load /apps/guake/
+    become: true
+    become_user: "{{ username }}"
 
   - name: Install Visual Studio Code
     community.general.snap:
@@ -247,21 +251,30 @@
     loop: "{{ organizations | subelements('repositories') }}"
     register: organizations_repositories_configurations
 
-  - name: Copy configurations to organizations' repositories
-    synchronize:
-      src: "secrets/{{ item.item.0.name }}/{{ item.item.1 }}/"
-      dest: "{{ home }}/{{ item.item.0.name }}/Repositories/{{ item.item.1 }}/"
-    become: true
-    become_user: "{{ username }}"
-    loop: "{{ organizations_repositories_configurations.results }}"
-    when: "item.stat.exists"
+  # - name: Copy configurations to organizations' repositories
+  #   synchronize:
+  #     src: "secrets/{{ item.item.0.name }}/{{ item.item.1 }}/"
+  #     dest: "{{ home }}/{{ item.item.0.name }}/Repositories/{{ item.item.1 }}/"
+  #   become: true
+  #   become_user: "{{ username }}"
+  #   loop: "{{ organizations_repositories_configurations.results }}"
+  #   when: "item.stat.exists"
 
-  - name: Install Spotify
+  - name: Install Snap applications
     community.general.snap:
-      name: spotify
+      name: 
+        - spotify
+        - rambox
 
-  - name: Install simple-scan
-    apt: name=simple-scan
+  - name: Add APT repositories
+    apt_repository:
+      repo: ppa:inkscape.dev/stable
+
+  - name: Install API packages
+    apt:
+      pkg:
+      - simple-scan
+      - inkscape
 
   - name: Set favorite apps
     community.general.dconf:
@@ -276,3 +289,13 @@
       dest: "~/.config/mimeapps.list"
     become: true
     become_user: "{{ username }}"
+
+  - name: Set gsettings
+    command: gsettings set {{ item.path }} {{ item.key }} {{ item.value }}
+    become: true
+    become_user: "{{ username }}"
+    loop:
+    - path: org.freedesktop.ibus.panel.emoji
+      key: hotkey
+      value: "[]"
+    changed_when: false
