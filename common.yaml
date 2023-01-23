@@ -4,6 +4,10 @@
     home: /home/{{ username }}
     organizations: "{{lookup('file', 'secrets/organizations.yaml') | from_yaml}}"
   tasks:
+  # Install: Vim
+  # Instal Postman
+  # Configure VS Code
+
   - name: Check if Universe APT repository is enabled
     command: grep -i "^[^#].*universe.*" /etc/apt/sources.list
     register: is_universe_enabled
@@ -24,6 +28,20 @@
       - ca-certificates
       - gnupg
       - lsb-release
+      - net-tools
+      # - libqt5dbus5
+      # - libqt5core5a
+      # - libqt5sql5
+      # - libqt5sql5-sqlite
+      # - libqt5webchannel5
+      # - libqt5webengine5
+      # - libqt5webenginecore5
+      # - libqt5webenginewidgets5
+      # - libqt5webkit5
+      # - libqt5webview5
+      # - libqt5widgets5
+      - libnss3-tools
+      - ca-certificates
 
   - name: Configure SSH
     synchronize:
@@ -198,6 +216,8 @@
       groups: docker
       append: true
 
+  # - name: Copy docker secret to ~/.docker/config.json
+
   - name: Install AWS CLI
     apt:
       pkg: awscli
@@ -260,21 +280,41 @@
   #   loop: "{{ organizations_repositories_configurations.results }}"
   #   when: "item.stat.exists"
 
+  # - name: Copy Microsoft APT repository GPG key to trusted directory
+  #   apt_key:
+  #     url: https://packages.microsoft.com/keys/microsoft.asc
+  #     keyring: /etc/apt/trusted.gpg.d/microsoft.gpg
+
+  # - name: Add Microsoft APT repositories
+  #   apt_repository:
+  #     repo: deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main
+
   - name: Install Snap applications
+    tags: 
+    - only
     community.general.snap:
-      name: 
+      name:
         - spotify
         - rambox
+        - postman
+
+  - name: Configure Rambox
+    synchronize:
+      src: secrets/rambox/
+      dest: "{{ home }}/snap/rambox/current/.config/rambox/"
+    become: true
+    become_user: "{{ username }}"
 
   - name: Add APT repositories
     apt_repository:
       repo: ppa:inkscape.dev/stable
 
-  - name: Install API packages
+  - name: Install APT packages
     apt:
       pkg:
       - simple-scan
       - inkscape
+      - usb-creator-gtk
 
   - name: Set favorite apps
     community.general.dconf:
@@ -299,3 +339,10 @@
       key: hotkey
       value: "[]"
     changed_when: false
+
+  - name: Set startup applications
+    synchronize:
+      src: configs/common/autostart/
+      dest: "{{ home }}/.config/autostart/"
+    become: true
+    become_user: "{{ username }}"

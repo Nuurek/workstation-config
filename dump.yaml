@@ -23,6 +23,8 @@
       content: "{{ guake_dconf.stdout }}"
       dest: configs/common/guake/guake.dconf
 
+  # - name: Copy Docker config ~/.docker/config.json
+
   - name: Copy AWS CLI config
     synchronize:
       src: "{{ home }}/.aws/"
@@ -39,5 +41,22 @@
     synchronize:
       src: "{{ home }}/.config/JetBrains/"
       dest: secrets/JetBrains/
+    become: true
+    become_user: "{{ username }}"
+
+  - name: Copy Rambox config
+    synchronize:
+      src: "{{ home }}/snap/rambox/current/.config/rambox/{{ item }}"
+      dest: secrets/rambox/
+    become: true
+    become_user: "{{ username }}"
+    loop:
+    - config.json
+    - Settings.json
+
+  - name: Copy startup applications
+    synchronize:
+      src: "{{ home }}/.config/autostart/"
+      dest: configs/common/autostart/
     become: true
     become_user: "{{ username }}"
