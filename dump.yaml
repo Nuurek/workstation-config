@@ -23,8 +23,6 @@
       content: "{{ guake_dconf.stdout }}"
       dest: configs/common/guake/guake.dconf
 
-  # - name: Copy Docker config ~/.docker/config.json
-
   - name: Copy AWS CLI config
     synchronize:
       src: "{{ home }}/.aws/"

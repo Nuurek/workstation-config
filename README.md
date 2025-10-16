@@ -6,7 +6,6 @@ This repository contains Ansible playbook for configuring local development mach
 
 Install Ansible:
 ```
-sudo apt-add-repository ppa:ansible/ansible
 sudo apt install ansible
 ```
 
@@ -22,14 +21,6 @@ Put all the required secrets under `secrets/` directory in this repository. The 
 
 * `.ssh`
 * `.aws`
-* `Organization1/`
-    * `.gitconfig`
-    * `organization1-repository1/.idea`
-    * `organization1-repository2/.vscode`
-* `Organization2/`
-    * `.gitconfig`
-    * `organization2-repository1/.idea`
-    * `organization2-repository2/.vscode`
 * `JetBrains/`
     * `Pycharm20xx.y/`
     * `CLion20xx.y/`

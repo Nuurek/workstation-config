@@ -5,6 +5,7 @@ display-tab-names=0
 gtk-use-system-default-theme=true
 hide-tabs-if-one-tab=false
 history-size=1000
+load-guake-yml=true
 max-tab-name-length=100
 mouse-display=true
 open-tab-cwd=true

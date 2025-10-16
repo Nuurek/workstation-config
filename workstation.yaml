@@ -5,23 +5,3 @@
   vars:
     username: nuurek
     home: /home/{{ username }}
-  tasks:
-  - name: Install NVIDIA driver
-    apt:
-      pkg:
-      - nvidia-driver-515
-
-  - name: Find Spotify config file
-    command: "find {{ home }}/snap/ -wholename '*.config/spotify/Users/*/prefs'"
-    register: spotify_config
-    changed_when: false
-
-  - name: Set Spotify zoom level
-    when: spotify_config.stdout
-    lineinfile:
-      path: "{{ spotify_config.stdout }}"
-      create: true
-      regexp: ^app\.browser\.zoom-level=
-      line: app.browser.zoom-level=400
-    become: true
-    become_user: "{{ username }}"

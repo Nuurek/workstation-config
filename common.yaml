@@ -1,348 +1,230 @@
 - hosts: localhost
+
   vars:
     username: nuurek
     home: /home/{{ username }}
     organizations: "{{lookup('file', 'secrets/organizations.yaml') | from_yaml}}"
+
   tasks:
-  # Install: Vim
-  # Instal Postman
-  # Configure VS Code
+    - name: Install required dependencies
+      apt:
+        pkg:
+          - dbus-x11
+          - libfuse2
+          - python3-psutil
+          - curl
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - net-tools
+          - libnss3-tools
+          - ca-certificates
 
-  - name: Check if Universe APT repository is enabled
-    command: grep -i "^[^#].*universe.*" /etc/apt/sources.list
-    register: is_universe_enabled
-    failed_when: is_universe_enabled.rc > 1
-    changed_when: false
+    - name: Configure SSH
+      synchronize:
+        src: secrets/.ssh/
+        dest: "{{ home }}/.ssh/"
+        recursive: yes
+        archive: no
+        checksum: yes
+        delete: yes
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Enable Universe APT repository
-    when: is_universe_enabled.rc == 1
-    command: sudo add-apt-repository universe
+    - name: Find SSH keys
+      find:
+        paths: "{{ home }}/.ssh/"
+        file_type: file
+      register: ssh_key_files
 
-  - name: Install required dependencies
-    apt:
-      pkg:
-      - dbus-x11
-      - libfuse2
-      - python3-psutil
-      - curl
-      - ca-certificates
-      - gnupg
-      - lsb-release
-      - net-tools
-      # - libqt5dbus5
-      # - libqt5core5a
-      # - libqt5sql5
-      # - libqt5sql5-sqlite
-      # - libqt5webchannel5
-      # - libqt5webengine5
-      # - libqt5webenginecore5
-      # - libqt5webenginewidgets5
-      # - libqt5webkit5
-      # - libqt5webview5
-      # - libqt5widgets5
-      - libnss3-tools
-      - ca-certificates
+    - name: Change permissions of SSH keys
+      file:
+        path: "{{ item.path }}"
+        mode: "0400"
+      loop: "{{ ssh_key_files.files }}"
 
-  - name: Configure SSH
-    synchronize:
-      src: secrets/.ssh/
-      dest: "{{ home }}/.ssh/"
-      recursive: yes
-      archive: no
-      checksum: yes
-      delete: yes
-    become: true
-    become_user: "{{ username }}"
+    - name: Install git
+      apt: name=git
 
-  - name: Find SSH keys
-    find:
-      paths: "{{ home }}/.ssh/"
-      file_type: file
-    register: ssh_key_files
+    - name: Configure git
+      copy:
+        src: configs/common/git/.gitconfig
+        dest: "~/.gitconfig"
+        force: false
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Change permissions of SSH keys
-    file:
-      path: "{{ item.path }}"
-      mode: "0400"
-    loop: "{{ ssh_key_files.files }}"
-  
-  - name: Install git
-    apt: name=git
+    - name: Install Guake
+      apt: name=guake
 
-  - name: Configure git
-    copy:
-      src: configs/common/git/.gitconfig
-      dest: "~/.gitconfig"
-      force: false
-    become: true
-    become_user: "{{ username }}"
+    - name: Check if Guake config is updated
+      shell: if [[ "`dconf dump /org/guake/`" == "`cat configs/common/guake/guake.dconf`" ]]; then echo "true"; else echo "false"; fi
+      args:
+        executable: /bin/bash
+      register: guake_config
+      changed_when: guake_config.stdout == 'false'
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Install Guake
-    apt: name=guake
+    - name: Configure Guake
+      when: guake_config.changed
+      shell: cat configs/common/guake/guake.dconf | dconf load /org/guake/
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Check if Guake config is updated
-    shell: if [[ "`dconf dump /apps/guake/`" == "`cat configs/common/guake/guake.dconf`" ]]; then echo "true"; else echo "false"; fi
-    args:
-      executable: /bin/bash
-    register: guake_config
-    changed_when: guake_config.stdout == 'false'
-    become: true
-    become_user: "{{ username }}"
+    - name: Install Visual Studio Code
+      community.general.snap:
+        name: code
+        classic: true
 
-  - name: Configure Guake
-    when: guake_config.changed
-    shell: cat configs/common/guake/guake.dconf | dconf load /apps/guake/
-    become: true
-    become_user: "{{ username }}"
+    - name: Check if Google Chrome is installed
+      command: which google-chrome
+      register: google_chrome
+      failed_when: google_chrome.rc > 1
+      changed_when: google_chrome.rc != 0
 
-  - name: Install Visual Studio Code
-    community.general.snap:
-      name: code
-      classic: true
+    - name: Install Google Chrome
+      when: google_chrome.changed
+      apt:
+        deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
-  - name: Check if Google Chrome is installed
-    command: which google-chrome
-    register: google_chrome
-    failed_when: google_chrome.rc > 1
-    changed_when: google_chrome.rc != 0
+    - name: Set Google Chrome as default web browser
+      when: google_chrome.changed
+      command: xdg-settings set default-web-browser google-chrome.desktop
 
-  - name: Install Google Chrome
-    when: google_chrome.changed
-    apt:
-      deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+    - name: Install development packages
+      apt:
+        pkg:
+          - libcurl4-openssl-dev
+          - libssl-dev
+          - gdal-bin
+          - gettext
 
-  - name: Set Google Chrome as default web browser
-    when: google_chrome.changed
-    command: xdg-settings set default-web-browser google-chrome.desktop
+    - name: Check if Poetry is installed
+      stat:
+        path: "{{ home }}/.local/share/pypoetry/venv/bin/poetry"
+      register: poetry_bin
 
-  - name: Install development packages
-    apt:
-      pkg:
-      - libcurl4-openssl-dev
-      - libssl-dev
-      - gdal-bin
-      - gettext
+    - name: Install Poetry
+      when: not poetry_bin.stat.exists
+      shell: curl -sSL https://install.python-poetry.org | python3 -
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Enable deadsnakes APT repository 
-    apt_repository: 
-      repo: "ppa:deadsnakes/ppa"
+    - name: Append .local/bin to $PATH in .bashrc
+      lineinfile:
+        path: "{{ home }}/.bashrc"
+        line: export PATH="$HOME/.local/bin:$PATH"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Copy deadsnakes APT repository GPG key to trusted directory
-    shell: sudo apt-key export 6A755776 | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/deadsnakes.gpg
-    args:
-      creates: /etc/apt/trusted.gpg.d/deadsnakes.gpg
+    - name: Install PyCharm Professional Edition
+      community.general.snap:
+        name: pycharm-professional
+        classic: true
 
-  - name: Install Python related packages
-    apt:
-      pkg:
-      - python3-pip
-      - python3.9
-      - python3.9-dev
-      - python3.9-venv
-      - python3.10-dev
-      - python3.10-venv
+    - name: Install uv
+      shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      args:
+        creates: "{{ home }}/.local/bin/uv"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Check if Poetry is installed
-    stat:
-      path: "{{ home }}/.local/share/pypoetry/venv/bin/poetry"
-    register: poetry_bin
+    - name: Install nvm
+      shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+      args:
+        creates: "{{ home }}/.nvm/nvm.sh"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Install Poetry
-    when: not poetry_bin.stat.exists
-    shell: curl -sSL https://install.python-poetry.org | python3 -
-    become: true
-    become_user: "{{ username }}"
+    - name: Add Docker's GPG key
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
 
-  - name: Append .local/bin to $PATH in .bashrc
-    lineinfile:
-      path: "{{ home }}/.bashrc"
-      line: export PATH="$HOME/.local/bin:$PATH"
-    become: true
-    become_user: "{{ username }}"
+    - name: Set up Docker APT repository
+      shell: |
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+          $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+      register: docker_apt_repository
 
-  - name: Install PyCharm Professional Edition
-    community.general.snap:
-      name: pycharm-professional
-      classic: true
+    - name: Update the APT package index for Docker
+      when: docker_apt_repository.changed
+      command: apt-get update
 
-  - name: Synchronize JetBrains configs
-    synchronize:
-      src: secrets/JetBrains/
-      dest: "{{ home }}/.config/JetBrains/"
-    become: true
-    become_user: "{{ username }}"
+    - name: Install Docker
+      apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
 
-  - name: Install nvm
-    shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
-    args:
-      creates: "{{ home }}/.nvm/nvm.sh"
-    become: true
-    become_user: "{{ username }}"
+    - name: Create docker group
+      group:
+        name: docker
+        state: present
 
-  - name: Add Docker's GPG key
-    shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    args:
-      creates: /etc/apt/keyrings/docker.gpg
+    - name: Add user to docker group
+      user:
+        name: "{{ username }}"
+        groups: docker
+        append: true
 
-  - name: Set up Docker APT repository
-    shell: |
-      echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    args:
-      creates: /etc/apt/sources.list.d/docker.list
-    register: docker_apt_repository
+    - name: Install AWS CLI
+      community.general.snap:
+        name: aws-cli
+        classic: true
 
-  - name: Update the APT package index for Docker
-    when: docker_apt_repository.changed
-    command: apt-get update
+    - name: Configure AWS CLI
+      synchronize:
+        src: secrets/.aws/
+        dest: "{{ home }}/.aws/"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Install Docker
-    apt:
-      pkg:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
+    - name: Install Snap applications
+      tags:
+        - only
+      community.general.snap:
+        name:
+          - spotify
+          - rambox
+          - postman
 
-  - name: Create docker group
-    group:
-      name: docker
-      state: present
+    - name: Add APT repositories
+      apt_repository:
+        repo: ppa:inkscape.dev/stable
 
-  - name: Add user to docker group
-    user:
-      name: "{{ username }}"
-      groups: docker
-      append: true
+    - name: Install APT packages
+      apt:
+        pkg:
+          - simple-scan
+          - inkscape
+          - usb-creator-gtk
 
-  # - name: Copy docker secret to ~/.docker/config.json
+    - name: Set favorite apps
+      community.general.dconf:
+        key: "/org/gnome/shell/favorite-apps"
+        value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'pycharm-professional_pycharm-professional.desktop', 'code_code.desktop', 'spotify_spotify.desktop']"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Install AWS CLI
-    apt:
-      pkg: awscli
+    - name: Set MIME Applications
+      copy:
+        src: configs/common/gnome/mimeapps.list
+        dest: "~/.config/mimeapps.list"
+      become: true
+      become_user: "{{ username }}"
 
-  - name: Configure AWS CLI
-    synchronize:
-      src: secrets/.aws/
-      dest: "{{ home }}/.aws/"
-    become: true
-    become_user: "{{ username }}"
-
-  - name: Create organizations' directories
-    file:
-      path: "~/{{ item.name }}/Repositories"
-      state: directory
-    become: true
-    become_user: "{{ username }}"
-    loop: "{{ organizations }}"
-
-  - name: Configure organizations' git
-    copy:
-      src: "secrets/{{ item.name }}/.gitconfig"
-      dest: "~/{{ item.name }}/.gitconfig"
-    become: true
-    become_user: "{{ username }}"
-    loop: "{{ organizations }}"
-
-  - name: Set organizations' git configs in user .gitconfig
-    blockinfile:
-      path: "~/.gitconfig"
-      block: |
-        [includeIf "gitdir:~/{{ item.name }}/"]
-          path = ~/{{ item.name }}/.gitconfig
-    become: true
-    become_user: "{{ username }}"
-    loop: "{{ organizations }}"
-
-  - name: Checkout organizations' repositories
-    git:
-      repo: "git@{{ item.0.base_repositories_path }}/{{ item.1 }}.git"
-      dest: "~/{{ item.0.name }}/Repositories/{{ item.1 }}"
-      accept_newhostkey: true
-      update: no
-    become: true
-    become_user: "{{ username }}"
-    loop: "{{ organizations | subelements('repositories') }}"
-
-  - name: Check if configurations for organizations' repositories exist
-    stat:
-      path: "secrets/{{ item.0.name }}/{{ item.1 }}/"
-    loop: "{{ organizations | subelements('repositories') }}"
-    register: organizations_repositories_configurations
-
-  # - name: Copy configurations to organizations' repositories
-  #   synchronize:
-  #     src: "secrets/{{ item.item.0.name }}/{{ item.item.1 }}/"
-  #     dest: "{{ home }}/{{ item.item.0.name }}/Repositories/{{ item.item.1 }}/"
-  #   become: true
-  #   become_user: "{{ username }}"
-  #   loop: "{{ organizations_repositories_configurations.results }}"
-  #   when: "item.stat.exists"
-
-  # - name: Copy Microsoft APT repository GPG key to trusted directory
-  #   apt_key:
-  #     url: https://packages.microsoft.com/keys/microsoft.asc
-  #     keyring: /etc/apt/trusted.gpg.d/microsoft.gpg
-
-  # - name: Add Microsoft APT repositories
-  #   apt_repository:
-  #     repo: deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main
-
-  - name: Install Snap applications
-    tags: 
-    - only
-    community.general.snap:
-      name:
-        - spotify
-        - rambox
-        - postman
-
-  - name: Configure Rambox
-    synchronize:
-      src: secrets/rambox/
-      dest: "{{ home }}/snap/rambox/current/.config/rambox/"
-    become: true
-    become_user: "{{ username }}"
-
-  - name: Add APT repositories
-    apt_repository:
-      repo: ppa:inkscape.dev/stable
-
-  - name: Install APT packages
-    apt:
-      pkg:
-      - simple-scan
-      - inkscape
-      - usb-creator-gtk
-
-  - name: Set favorite apps
-    community.general.dconf:
-      key: '/org/gnome/shell/favorite-apps'
-      value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'rambox_rambox.desktop', 'pycharm-professional_pycharm-professional.desktop', 'code_code.desktop', 'spotify_spotify.desktop']"
-    become: true
-    become_user: "{{ username }}"
-
-  - name: Set MIME Applications
-    copy:
-      src: configs/common/gnome/mimeapps.list
-      dest: "~/.config/mimeapps.list"
-    become: true
-    become_user: "{{ username }}"
-
-  - name: Set gsettings
-    command: gsettings set {{ item.path }} {{ item.key }} {{ item.value }}
-    become: true
-    become_user: "{{ username }}"
-    loop:
-    - path: org.freedesktop.ibus.panel.emoji
-      key: hotkey
-      value: "[]"
-    changed_when: false
-
-  - name: Set startup applications
-    synchronize:
-      src: configs/common/autostart/
-      dest: "{{ home }}/.config/autostart/"
-    become: true
-    become_user: "{{ username }}"
+    - name: Set startup applications
+      synchronize:
+        src: configs/common/autostart/
+        dest: "{{ home }}/.config/autostart/"
+      become: true
+      become_user: "{{ username }}"
